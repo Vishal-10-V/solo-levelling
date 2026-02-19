@@ -2,13 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Filter, BarChart3 } from 'lucide-react';
+import { Plus, Filter, BarChart3, Zap, Shield, Crown } from 'lucide-react';
 import QuestModal from './components/QuestModal';
 import Calendar from './components/Calendar';
 import AdvancedStats from './components/AdvancedStats';
 import ProgressChart from './components/ProgressChart';
 import AdvancedQuestCard from './components/AdvancedQuestCard';
 import NotificationCenter, { Notification } from './components/NotificationCenter';
+import StatsPanel from './components/StatsPanel';
+import SkillsPanel from './components/SkillsPanel';
+import EquipmentPanel from './components/EquipmentPanel';
+import PrestigePanel from './components/PrestigePanel';
 
 interface Quest {
   id: string;
@@ -50,9 +54,44 @@ export default function Home() {
   const [currentExp, setCurrentExp] = useState(0);
   const [requiredExp, setRequiredExp] = useState(100);
   const [gold, setGold] = useState(0);
+  const [manaStones, setManaStones] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
-  const [hunterStats, setHunterStats] = useState({ strength: 5, intelligence: 5, vitality: 5, dexterity: 5 });
+  const [statPoints, setStatPoints] = useState(0);
+  const [hunterStats, setHunterStats] = useState({ 
+    strength: 5, 
+    intelligence: 5, 
+    vitality: 5, 
+    dexterity: 5, 
+    wisdom: 5,
+    luck: 5,
+    endurance: 5,
+    charisma: 5,
+    perception: 5,
+  });
+  
+  // Skills and Equipment
+  const [skills, setSkills] = useState<any[]>([
+    { id: '1', name: 'Mana Amplification', description: 'Boost all mana regeneration', level: 1, maxLevel: 5, currentExp: 0, requiredExp: 100, cooldownMinutes: 0, costManaStones: 10, icon: '✨' },
+    { id: '2', name: 'Shadow Clone', description: 'Create shadow clones to help with tasks', level: 1, maxLevel: 3, currentExp: 50, requiredExp: 150, cooldownMinutes: 120, costManaStones: 20, icon: '👥' },
+    { id: '3', name: 'Healing Light', description: 'Restore fatigue from quests', level: 2, maxLevel: 5, currentExp: 75, requiredExp: 100, cooldownMinutes: 60, costManaStones: 15, icon: '✨' },
+  ]);
+  
+  const [equipment, setEquipment] = useState<any[]>([
+    { id: '1', name: 'Iron Sword', type: 'weapon', rarity: 'common', level: 1, equipped: true, maxDurability: 100, currentDurability: 100, statBoosts: { strength: 5 }, goldValue: 50 },
+    { id: '2', name: 'Steel Armor', type: 'armor', rarity: 'uncommon', level: 1, equipped: true, maxDurability: 150, currentDurability: 100, statBoosts: { vitality: 10 }, goldValue: 100 },
+    { id: '3', name: 'Ring of Fortune', type: 'ring', rarity: 'rare', level: 5, equipped: false, maxDurability: 50, currentDurability: 50, statBoosts: { luck: 15 }, goldValue: 200 },
+  ]);
+  
+  const [prestige, setPrestige] = useState({ 
+    level: 0, 
+    totalPrestigeExp: 0, 
+    requiredExp: 5000, 
+    bonusMultiplier: 1, 
+    unlockedPerks: [] 
+  });
+  
+  const [totalExp, setTotalExp] = useState(0);
   const [quests, setQuests] = useState<Quest[]>([
     { id: '1', title: 'Morning Training', description: 'Start with 30 mins of exercise', rank: 'E', status: 'active', expReward: 10, goldReward: 5, category: 'exercise', type: 'daily', estimatedMinutes: 30, createdAt: new Date().toISOString() },
     { id: '2', title: 'Complete Project Task', description: 'Finish priority tasks', rank: 'C', status: 'active', expReward: 50, goldReward: 30, category: 'work', type: 'daily', estimatedMinutes: 120, createdAt: new Date().toISOString() },
@@ -65,7 +104,7 @@ export default function Home() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [weeklyData, setWeeklyData] = useState([3, 5, 2, 6, 4, 7, 3]);
   const [completedDates, setCompletedDates] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'stats'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'stats' | 'abilities' | 'equipment' | 'prestige'>('list');
 
 
   useEffect(() => {
@@ -119,6 +158,127 @@ export default function Home() {
     return multipliers[rank] || 10;
   };
 
+  const calculateCombatStats = () => {
+    const baseDamage = hunterStats.strength * 2 + hunterStats.dexterity + hunterStats.luck;
+    const baseDefense = hunterStats.vitality * 2 + hunterStats.endurance + hunterStats.perception;
+    const baseHeal = hunterStats.wisdom * 2 + hunterStats.intelligence + hunterStats.vitality;
+    
+    // Add equipment bonuses
+    const equippedItems = equipment.filter(e => e.equipped);
+    let totalDamage = baseDamage;
+    let totalDefense = baseDefense;
+    let totalHealPower = baseHeal;
+    
+    equippedItems.forEach(item => {
+      if (item.statBoosts.strength) totalDamage += item.statBoosts.strength * 2;
+      if (item.statBoosts.dexterity) totalDamage += item.statBoosts.dexterity;
+      if (item.statBoosts.luck) totalDamage += item.statBoosts.luck;
+      if (item.statBoosts.vitality) {
+        totalDefense += item.statBoosts.vitality * 2;
+        totalHealPower += item.statBoosts.vitality;
+      }
+      if (item.statBoosts.endurance) totalDefense += item.statBoosts.endurance;
+      if (item.statBoosts.wisdom) totalHealPower += item.statBoosts.wisdom * 2;
+      if (item.statBoosts.intelligence) totalHealPower += item.statBoosts.intelligence;
+    });
+    
+    return { totalDamage, totalDefense, totalHealPower };
+  };
+
+  const addStatPoint = (stat: keyof typeof hunterStats) => {
+    if (statPoints > 0) {
+      const newStats = { ...hunterStats };
+      newStats[stat] += 1;
+      setHunterStats(newStats);
+      setStatPoints(statPoints - 1);
+      addNotification('success', 'STAT INCREASED', `${stat} +1`);
+    }
+  };
+
+  const handleEquip = (equipmentId: string) => {
+    const newEquipment = equipment.map(e => {
+      if (e.id === equipmentId) {
+        return { ...e, equipped: true };
+      }
+      // Only allow one weapon, one armor at a time
+      if (e.equipped && e.type === equipment.find(eq => eq.id === equipmentId)?.type) {
+        return { ...e, equipped: false };
+      }
+      return e;
+    });
+    setEquipment(newEquipment);
+    addNotification('success', 'EQUIPMENT EQUIPPED', 'Stats updated!');
+  };
+
+  const handleUnequip = (equipmentId: string) => {
+    const newEquipment = equipment.map(e =>
+      e.id === equipmentId ? { ...e, equipped: false } : e
+    );
+    setEquipment(newEquipment);
+  };
+
+  const handleRepair = (equipmentId: string) => {
+    const item = equipment.find(e => e.id === equipmentId);
+    if (item && gold >= item.maxDurability * 2) {
+      const newEquipment = equipment.map(e =>
+        e.id === equipmentId ? { ...e, currentDurability: e.maxDurability } : e
+      );
+      setEquipment(newEquipment);
+      setGold(gold - item.maxDurability * 2);
+      addNotification('success', 'EQUIPMENT REPAIRED', 'Durability restored!');
+    }
+  };
+
+  const handleSellEquipment = (equipmentId: string) => {
+    const item = equipment.find(e => e.id === equipmentId);
+    if (item) {
+      setGold(gold + item.goldValue);
+      setEquipment(equipment.filter(e => e.id !== equipmentId));
+      addNotification('success', 'EQUIPMENT SOLD', `Gained ${item.goldValue} gold!`);
+    }
+  };
+
+  const handleUpgradeSkill = (skillId: string) => {
+    const skill = skills.find(s => s.id === skillId);
+    if (skill && skill.level < skill.maxLevel && skill.currentExp >= skill.requiredExp) {
+      const newSkills = skills.map(s => {
+        if (s.id === skillId) {
+          return {
+            ...s,
+            level: s.level + 1,
+            currentExp: 0,
+            requiredExp: Math.floor(s.requiredExp * 1.5),
+          };
+        }
+        return s;
+      });
+      setSkills(newSkills);
+      addNotification('success', 'SKILL LEVELED UP', `${skill.name} is now Level ${skill.level + 1}!`);
+    }
+  };
+
+  const handlePrestige = () => {
+    if (level >= 50) {
+      const newPrestige = {
+        ...prestige,
+        level: prestige.level + 1,
+        bonusMultiplier: prestige.bonusMultiplier + 0.5,
+        totalPrestigeExp: 0,
+        requiredExp: prestige.requiredExp + 1000,
+        unlockedPerks: [
+          ...prestige.unlockedPerks,
+          `Prestige Level ${prestige.level + 1} Bonus`,
+        ],
+      };
+      setPrestige(newPrestige);
+      setLevel(1);
+      setCurrentExp(0);
+      setRequiredExp(100);
+      setStatPoints(0);
+      addNotification('success', 'PRESTIGE ACHIEVED!', 'Your journey begins anew...');
+    }
+  };
+
   const completeQuest = (id: string) => {
     const questIndex = quests.findIndex((q) => q.id === id);
     if (questIndex === -1 || quests[questIndex].status === 'completed') return;
@@ -131,11 +291,15 @@ export default function Home() {
     let newRequired = requiredExp;
     let newStreak = currentStreak + 1;
     let newLongest = Math.max(longestStreak, newStreak);
+    let newStatPoints = statPoints;
+    let newPrestigeExp = prestige.totalPrestigeExp;
 
     while (newTotal >= newRequired) {
       newTotal -= newRequired;
       newLevelNum++;
       newRequired = Math.floor(100 * Math.pow(1.5, newLevelNum - 1));
+      newStatPoints += 2; // +2 stat points per level
+      newPrestigeExp += 50; // prestige experience gain
     }
 
     // Increase stats based on category
@@ -148,9 +312,16 @@ export default function Home() {
     setCurrentExp(newTotal);
     setRequiredExp(newRequired);
     setGold(gold + quest.goldReward);
+    setManaStones(manaStones + Math.floor(quest.goldReward * 0.2));
     setCurrentStreak(newStreak);
     setLongestStreak(newLongest);
+    setStatPoints(newStatPoints);
     setHunterStats(newStats);
+    setTotalExp(totalExp + expGained);
+    
+    // Update prestige exp
+    const newPrestige = { ...prestige, totalPrestigeExp: newPrestigeExp };
+    setPrestige(newPrestige);
 
     const today = new Date().toISOString().split('T')[0];
     if (!completedDates.includes(today)) {
@@ -302,7 +473,7 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-6"
+            className="flex items-center gap-4"
           >
             {/* EXP Bar */}
             <div className="text-right">
@@ -330,12 +501,32 @@ export default function Home() {
               <span className="text-yellow-500 font-orbitron text-lg">◆</span>
               <span className="text-yellow-500 font-orbitron">{gold}</span>
             </motion.div>
+
+            {/* Mana Stones */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-lg"
+            >
+              <Zap className="text-purple-500" size={18} />
+              <span className="text-purple-500 font-orbitron">{manaStones}</span>
+            </motion.div>
+
+            {/* Stat Points */}
+            {statPoints > 0 && (
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-lg animate-pulse"
+              >
+                <span className="text-green-500 font-orbitron text-lg">+</span>
+                <span className="text-green-500 font-orbitron">{statPoints} Points</span>
+              </motion.div>
+            )}
           </motion.div>
         </div>
 
         {/* View Mode Buttons */}
         <div className="flex gap-2 flex-wrap">
-          {['list', 'calendar', 'stats'].map((mode) => (
+          {['list', 'calendar', 'stats', 'abilities', 'equipment', 'prestige'].map((mode) => (
             <motion.button
               key={mode}
               whileHover={{ scale: 1.05 }}
@@ -351,6 +542,12 @@ export default function Home() {
               {mode === 'calendar' && '📅 CALENDAR'}
               {mode === 'stats' && <BarChart3 className="inline mr-2" size={16} />}
               {mode === 'stats' && 'STATS'}
+              {mode === 'abilities' && <Zap className="inline mr-2" size={16} />}
+              {mode === 'abilities' && 'ABILITIES'}
+              {mode === 'equipment' && <Shield className="inline mr-2" size={16} />}
+              {mode === 'equipment' && 'EQUIPMENT'}
+              {mode === 'prestige' && <Crown className="inline mr-2" size={16} />}
+              {mode === 'prestige' && 'PRESTIGE'}
             </motion.button>
           ))}
         </div>
@@ -452,6 +649,50 @@ export default function Home() {
                 totalCompleted={completedQuestCount}
                 avgCompletionTime={Math.round(quests.reduce((acc, q) => acc + (q.estimatedMinutes || 30), 0) / quests.length)}
                 stats={hunterStats}
+              />
+            </motion.div>
+          )}
+
+          {viewMode === 'abilities' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
+              <div className="w-full space-y-6">
+                <StatsPanel
+                  stats={hunterStats}
+                  statPoints={statPoints}
+                  onStatIncrease={addStatPoint}
+                  {...calculateCombatStats()}
+                />
+                <hr className="border-panel-border" />
+                <SkillsPanel
+                  skills={skills}
+                  manaStones={manaStones}
+                  onUpgradeSkill={handleUpgradeSkill}
+                  onActivateSkill={() => addNotification('info', 'SKILL ACTIVATED', 'Skill activated successfully!')}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {viewMode === 'equipment' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
+              <EquipmentPanel
+                equipment={equipment}
+                gold={gold}
+                onEquip={handleEquip}
+                onUnequip={handleUnequip}
+                onRepair={handleRepair}
+                onSell={handleSellEquipment}
+              />
+            </motion.div>
+          )}
+
+          {viewMode === 'prestige' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center">
+              <PrestigePanel
+                prestige={prestige}
+                hunterLevel={level}
+                totalExp={totalExp}
+                onPrestige={handlePrestige}
               />
             </motion.div>
           )}

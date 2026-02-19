@@ -61,6 +61,44 @@ export interface HunterStats {
   vitality: number;      // Sleep/exercise
   dexterity: number;     // Speed habits
   wisdom: number;        // Reflection/meditation
+  luck: number;          // Lucky moments
+  endurance: number;     // Stamina/persistence
+  charisma: number;      // Social skills
+  perception: number;    // Awareness/detail
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  level: number;
+  maxLevel: number;
+  currentExp: number;
+  requiredExp: number;
+  statBoosts: Partial<HunterStats>;
+  cooldownMinutes: number;
+  costManaStones: number;
+}
+
+export interface Equipment {
+  id: string;
+  name: string;
+  type: 'weapon' | 'armor' | 'accessory' | 'ring';
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  level: number;
+  statBoosts: Partial<HunterStats>;
+  goldValue: number;
+  equipped: boolean;
+  maxDurability: number;
+  currentDurability: number;
+}
+
+export interface Prestige {
+  level: number;
+  totalPrestigeExp: number;
+  requiredExp: number;
+  bonusMultiplier: number;
+  unlockedPerks: string[];
 }
 
 export interface Hunter {
@@ -73,12 +111,20 @@ export interface Hunter {
   requiredExp: number;
   totalExp: number;
   stats: HunterStats;
+  statPoints: number;
   gold: number;
   manaStones: number;
   shadowArmyCount: number;
   currentStreak: number;
   longestStreak: number;
   fatigueLevel: number;
+  maxFatigue: number;
+  skills: Skill[];
+  equipment: Equipment[];
+  prestige: Prestige;
+  totalDamage: number;
+  totalDefense: number;
+  totalHealPower: number;
   createdAt: Date;
   updatedAt: Date;
 }
